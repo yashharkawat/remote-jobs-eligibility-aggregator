@@ -1,0 +1,48 @@
+{
+  "actorSpecification": 1,
+  "name": "remote-jobs-eligibility-aggregator",
+  "title": "Worldwide Remote Jobs Scraper - Jobs Open to Your Country",
+  "description": "Remote jobs scraper and API: 8 remote job boards in one run (RemoteOK, We Work Remotely, Himalayas, Remotive, Jobicy, Working Nomads, Arbeitnow, HN Who is hiring), de-duplicated, with a verdict on every job - can you apply from your country, or is it US/EU-only? No login, no proxies.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "dockerfile": "./Dockerfile",
+  "storages": {
+    "dataset": {
+      "actorSpecification": 1,
+      "views": {
+        "overview": {
+          "title": "Jobs",
+          "transformation": {
+            "fields": [
+              "eligibility",
+              "title",
+              "company",
+              "locationRaw",
+              "eligibilityReason",
+              "salary",
+              "minYears",
+              "postedAt",
+              "source",
+              "url"
+            ]
+          },
+          "display": {
+            "component": "table",
+            "properties": {
+              "url": {
+                "label": "Apply / details",
+                "format": "link"
+              },
+              "postedAt": {
+                "label": "Posted",
+                "format": "date"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

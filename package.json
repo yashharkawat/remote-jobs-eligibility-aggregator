@@ -1,0 +1,16 @@
+{
+  "name": "remote-jobs-eligibility-aggregator",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Aggregates open remote-job feeds and tells you which jobs a candidate in a given country can actually apply to.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node test/local.js"
+  },
+  "dependencies": {
+    "apify": "^3.2.6"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

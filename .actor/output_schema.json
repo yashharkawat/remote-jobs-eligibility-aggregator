@@ -1,0 +1,16 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Output of the Worldwide Remote Jobs Scraper",
+  "properties": {
+    "jobs": {
+      "type": "string",
+      "title": "Jobs (one row per unique job, best eligibility first)",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "summary": {
+      "type": "string",
+      "title": "Run summary (per-source counts, what was filtered out and why)",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/SUMMARY"
+    }
+  }
+}

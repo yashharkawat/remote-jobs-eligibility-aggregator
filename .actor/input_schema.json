@@ -1,0 +1,124 @@
+{
+  "title": "Worldwide Remote Jobs Scraper - Jobs Open to Your Country",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "candidateCountry": {
+      "title": "Candidate's country",
+      "type": "string",
+      "description": "Where the candidate lives and will work from. Each job is labelled against this country: worldwide, open to your country/region, restricted elsewhere, or unclear.",
+      "editor": "textfield",
+      "default": "India",
+      "prefill": "India"
+    },
+    "keywords": {
+      "title": "Keywords (any of)",
+      "type": "array",
+      "description": "Keep a job if its title, tags or description contains ANY of these. Leave empty for all jobs.",
+      "editor": "stringList",
+      "prefill": [
+        "react",
+        "node",
+        "full stack"
+      ]
+    },
+    "titleMustMatch": {
+      "title": "Match keywords in the title only",
+      "type": "boolean",
+      "description": "Stricter: the keyword has to be in the job title, not only in the description.",
+      "default": false
+    },
+    "excludeKeywords": {
+      "title": "Exclude titles containing",
+      "type": "array",
+      "description": "Drop a job if its TITLE contains any of these (e.g. senior, staff, principal, manager).",
+      "editor": "stringList"
+    },
+    "eligibility": {
+      "title": "Which jobs to return",
+      "type": "string",
+      "description": "'eligible' = worldwide + open to your country or region. 'eligible_and_unclear' also keeps jobs that do not state a restriction. 'all' returns everything, labelled.",
+      "editor": "select",
+      "enum": [
+        "eligible",
+        "eligible_and_unclear",
+        "all"
+      ],
+      "enumTitles": [
+        "Only jobs I can apply to",
+        "Jobs I can apply to + unclear ones",
+        "Everything (labelled)"
+      ],
+      "default": "eligible_and_unclear"
+    },
+    "maxYearsRequired": {
+      "title": "Max years of experience required",
+      "type": "integer",
+      "description": "Drop jobs whose description asks for more than this many years. Jobs that state no number are kept. Leave empty to disable.",
+      "minimum": 0
+    },
+    "postedWithinDays": {
+      "title": "Posted within (days)",
+      "type": "integer",
+      "description": "Only jobs published in the last N days.",
+      "default": 14,
+      "minimum": 1,
+      "maximum": 90
+    },
+    "sources": {
+      "title": "Sources",
+      "type": "array",
+      "description": "Which open feeds to read. All are public JSON/RSS endpoints: no login, no cookies, no proxy needed.",
+      "editor": "select",
+      "items": {
+        "type": "string",
+        "enum": [
+          "himalayas",
+          "remoteok",
+          "weworkremotely",
+          "remotive",
+          "jobicy",
+          "arbeitnow",
+          "workingnomads",
+          "hackernews"
+        ],
+        "enumTitles": [
+          "Himalayas",
+          "RemoteOK",
+          "We Work Remotely",
+          "Remotive",
+          "Jobicy",
+          "Arbeitnow",
+          "Working Nomads",
+          "Hacker News - Who is hiring?"
+        ]
+      },
+      "default": [
+        "himalayas",
+        "remoteok",
+        "weworkremotely",
+        "remotive",
+        "jobicy",
+        "arbeitnow",
+        "workingnomads",
+        "hackernews"
+      ]
+    },
+    "maxItems": {
+      "title": "Maximum jobs to return",
+      "type": "integer",
+      "description": "Hard cap on rows pushed to the dataset (you are only charged for rows returned).",
+      "default": 200,
+      "minimum": 1
+    },
+    "includeDescription": {
+      "title": "Include full description",
+      "type": "boolean",
+      "description": "Adds the plain-text job description to every row (bigger output).",
+      "default": false
+    }
+  },
+  "required": [
+    "candidateCountry"
+  ]
+}
