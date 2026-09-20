@@ -155,3 +155,8 @@ not republish the listings as your own job board.
 The verdict comes from what the posting says. Some `unclear` jobs will turn out to be restricted once you talk to the
 company, and a posting can be wrong about itself. If a board is down, the run continues with the others and says so in
 the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL and it gets fixed.
+
+## Source code and running it
+
+- Run it on Apify: https://apify.com/yash_harkawat/remote-jobs-eligibility-aggregator
+- Source code and issues: https://github.com/yashharkawat/remote-jobs-eligibility-aggregator
