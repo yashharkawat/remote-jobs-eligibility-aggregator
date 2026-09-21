@@ -28,3 +28,8 @@ test('description restrictions still apply', () => {
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote', description: 'Applicants must be US-based.' }), 'restricted');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote', description: 'We hire from anywhere in the world.' }), 'worldwide');
 });
+
+test('"work from anywhere in the EU" is not worldwide (21 Sep: Makersite came back "worldwide")', () => {
+    assert.equal(v({ title: 'Data Scientist', locationRaw: 'Remote', description: 'Remote-First Flexibility - Work from anywhere in the EU, with the option to' }), 'restricted');
+    assert.equal(v({ title: 'Data Scientist', locationRaw: 'Remote', description: 'Work from anywhere in Asia.' }), 'region');
+});

@@ -160,6 +160,14 @@ function descriptionCheck(job, cand, fallback) {
     }
     if (fallback.eligibility === 'unclear' && WORLDWIDE_PROSE.test(d)) {
         const m = d.match(WORLDWIDE_PROSE);
+        // "work from anywhere in the EU" is a region rule, not a worldwide one.
+        const tail = d.slice(m.index + m[0].length, m.index + m[0].length + 40).match(/^\s*(?:in|within|across)\s+(?:the\s+)?([^.,;\n]+)/i);
+        if (tail) {
+            const w = mentions(tail[1]);
+            const mine = w.countries.includes(cand.name) || w.regions.some((r) => cand.regions.includes(r));
+            if (mine) return { eligibility: w.countries.includes(cand.name) ? 'country' : 'region', eligibilityReason: `Description says "${short(context(d, m.index, m[0].length + tail[0].length))}"` };
+            if (w.countries.length || w.regions.length) return { eligibility: 'restricted', eligibilityReason: `Description limits it to ${[...w.countries, ...w.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(context(d, m.index, m[0].length + tail[0].length))}"` };
+        }
         return { eligibility: 'worldwide', eligibilityReason: `Description says "${short(context(d, m.index, m[0].length))}"` };
     }
     return fallback;

@@ -163,6 +163,8 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.6 (21 Sep 2026)** - "work from anywhere in the EU" in a description is now read as an EU restriction, not
+  a worldwide job.
 - **0.1.5 (21 Sep 2026)** - a region in the job title ("Developer Advocate - EMEA", "Account Executive (US)") now
   overrides a board's "Anywhere in the World" location; 45 more countries are recognised as restrictions, so a
   Suriname-only posting no longer comes back as `unclear`. Unit tests added (`npm test`).
