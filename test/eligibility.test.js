@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { classify, resolveCountry } from '../src/eligibility.js';
+
+const india = resolveCountry('India');
+const v = (job) => classify({ description: '', ...job }, india).eligibility;
+
+test('country and region hits', () => {
+    assert.equal(v({ title: 'Engineer', locationRaw: 'India' }), 'country');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Northern America, LATAM, Europe, APAC' }), 'region');
+});
+
+test('worldwide location', () => {
+    assert.equal(v({ title: 'Software Engineer', locationRaw: 'Anywhere in the World' }), 'worldwide');
+});
+
+test('a country outside the main table is still a restriction (21 Sep: Suriname came back "unclear")', () => {
+    assert.equal(v({ title: 'CX Associate', locationRaw: 'Suriname' }), 'restricted');
+});
+
+test('a region in the title overrides a worldwide board location (21 Sep: "... EMEA" came back "worldwide")', () => {
+    assert.equal(v({ title: 'Developer Advocate - Service Management EMEA', locationRaw: 'Anywhere in the World' }), 'restricted');
+    assert.equal(v({ title: 'Account Executive (US)', locationRaw: 'Worldwide' }), 'restricted');
+    assert.equal(v({ title: 'Solutions Engineer, APAC', locationRaw: 'Worldwide' }), 'worldwide');
+});
+
+test('description restrictions still apply', () => {
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote', description: 'Applicants must be US-based.' }), 'restricted');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote', description: 'We hire from anywhere in the world.' }), 'worldwide');
+});

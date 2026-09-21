@@ -51,7 +51,11 @@ const WORLDWIDE = /\b(worldwide|world wide|anywhere|global(ly)?|international|al
 // Descriptions say "a global company" all the time, so prose needs an explicit hiring statement.
 const WORLDWIDE_PROSE = /\b(work from anywhere|anywhere in the world|remote[ ,:-]+(worldwide|global(ly)?|anywhere)|(fully )?remote,? worldwide|(hire|hiring|hires|open to candidates?|applicants?|candidates?) (from )?(globally|worldwide|anywhere|all over the world|any country|around the world)|location:? (worldwide|anywhere|global)|no location (restrictions?|requirements?)|any time ?zone)\b/i;
 // Any other country name means "restricted to somewhere that is not you", even if we hold no region data for it.
-const OTHER_COUNTRIES = ['afghanistan', 'albania', 'algeria', 'armenia', 'austria', 'azerbaijan', 'bahrain', 'belarus', 'belgium', 'bolivia', 'bosnia', 'bulgaria', 'cambodia', 'cameroon', 'costa rica', 'croatia', 'cyprus', 'czech republic', 'czechia', 'denmark', 'dominican republic', 'ecuador', 'el salvador', 'estonia', 'ethiopia', 'finland', 'georgia', 'ghana', 'greece', 'guatemala', 'honduras', 'hong kong', 'hungary', 'iceland', 'iran', 'iraq', 'israel', 'jamaica', 'jordan', 'kazakhstan', 'kuwait', 'latvia', 'lebanon', 'lithuania', 'luxembourg', 'malta', 'moldova', 'morocco', 'nicaragua', 'north macedonia', 'norway', 'oman', 'panama', 'paraguay', 'peru', 'puerto rico', 'qatar', 'russia', 'rwanda', 'saudi arabia', 'senegal', 'serbia', 'slovakia', 'slovenia', 'taiwan', 'tanzania', 'tunisia', 'uganda', 'uruguay', 'uzbekistan', 'venezuela', 'zambia', 'zimbabwe'];
+const OTHER_COUNTRIES = ['afghanistan', 'albania', 'algeria', 'armenia', 'austria', 'azerbaijan', 'bahrain', 'belarus', 'belgium', 'bolivia', 'bosnia', 'bulgaria', 'cambodia', 'cameroon', 'costa rica', 'croatia', 'cyprus', 'czech republic', 'czechia', 'denmark', 'dominican republic', 'ecuador', 'el salvador', 'estonia', 'ethiopia', 'finland', 'georgia', 'ghana', 'greece', 'guatemala', 'honduras', 'hong kong', 'hungary', 'iceland', 'iran', 'iraq', 'israel', 'jamaica', 'jordan', 'kazakhstan', 'kuwait', 'latvia', 'lebanon', 'lithuania', 'luxembourg', 'malta', 'moldova', 'morocco', 'nicaragua', 'north macedonia', 'norway', 'oman', 'panama', 'paraguay', 'peru', 'puerto rico', 'qatar', 'russia', 'rwanda', 'saudi arabia', 'senegal', 'serbia', 'slovakia', 'slovenia', 'taiwan', 'tanzania', 'tunisia', 'uganda', 'uruguay', 'uzbekistan', 'venezuela', 'zambia', 'zimbabwe',
+    'angola', 'bahamas', 'barbados', 'belize', 'benin', 'bhutan', 'botswana', 'brunei', 'burkina faso', 'cuba', "cote d'ivoire", 'ivory coast',
+    'fiji', 'gabon', 'guyana', 'haiti', 'kyrgyzstan', 'laos', 'libya', 'madagascar', 'malawi', 'maldives', 'mali', 'mauritius', 'mongolia',
+    'montenegro', 'mozambique', 'myanmar', 'namibia', 'niger', 'papua new guinea', 'sudan', 'suriname', 'syria', 'tajikistan', 'togo',
+    'trinidad', 'turkmenistan', 'yemen', 'kosovo', 'curacao', 'aruba'];
 
 const REGION_WORDS = ['north america', 'latin america', 'south america', 'southeast asia', 'south asia', 'east asia', 'middle east', 'european union',
     'americas', 'europe', 'emea', 'apac', 'asia', 'africa', 'oceania', 'latam', 'mena', 'dach', 'nordics', 'cee', 'anz', 'apj', 'asean', 'gcc', 'eu', 'amer'];
@@ -118,7 +122,15 @@ export function classify(job, cand) {
         if (m.countries.includes(cand.name)) return { eligibility: 'country', eligibilityReason: `Location lists ${cand.name}: "${short(loc)}"` };
         const regionHit = m.regions.find((r) => myRegions.has(r));
         if (regionHit) return { eligibility: 'region', eligibilityReason: `Location lists ${regionHit.toUpperCase()}, which includes ${cand.name}: "${short(loc)}"` };
-        if (WORLDWIDE.test(loc) && !m.countries.length) return descriptionCheck(job, cand, { eligibility: 'worldwide', eligibilityReason: `Location says "${short(loc)}"` });
+        if (WORLDWIDE.test(loc) && !m.countries.length) {
+            // "Anywhere in the World" on the board, but a title like "Developer Advocate - EMEA" still scopes the hire.
+            const t = mentions(job.title || '');
+            const titleMine = t.countries.includes(cand.name) || t.regions.some((r) => myRegions.has(r));
+            if ((t.countries.length || t.regions.length) && !titleMine) {
+                return { eligibility: 'restricted', eligibilityReason: `Title limits it to ${[...t.countries, ...t.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(job.title)}"` };
+            }
+            return descriptionCheck(job, cand, { eligibility: 'worldwide', eligibilityReason: `Location says "${short(loc)}"` });
+        }
         if (m.countries.length || m.regions.length) {
             return { eligibility: 'restricted', eligibilityReason: `Limited to ${[...m.countries, ...m.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(loc)}"` };
         }
