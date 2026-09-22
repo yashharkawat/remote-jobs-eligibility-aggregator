@@ -1,6 +1,6 @@
 import { Actor, log } from 'apify';
 import { SOURCES } from './sources.js';
-import { classify, minYears, resolveCountry } from './eligibility.js';
+import { classify, cleanTitle, minYears, resolveCountry } from './eligibility.js';
 
 const ORDER = { country: 0, region: 1, worldwide: 2, unclear: 3, restricted: 4 };
 const key = (j) => `${(j.company || '').toLowerCase().replace(/\W|inc$|llc$|ltd$|gmbh$/g, '')}|${(j.title || '').toLowerCase().replace(/\(.*?\)|\W/g, '')}`;
@@ -51,7 +51,7 @@ try {
         if (eligibility === 'eligible' && verdict.eligibility === 'unclear') { dropped.unclear++; continue; }
 
         const k = key(j);
-        const row = { ...verdict, title: j.title.trim(), company: (j.company || '').trim(), locationRaw: j.locationRaw || null, salary: j.salary || null, minYears: yrs,
+        const row = { ...verdict, title: cleanTitle(j.title), company: (j.company || '').trim(), locationRaw: j.locationRaw || null, salary: j.salary || null, minYears: yrs,
             employmentType: j.employmentType || null, tags: [...new Set((j.tags || []).map((t) => String(t).trim()).filter(Boolean))].slice(0, 15), postedAt: j.postedAt,
             source: j.source, alsoOn: [], url: j.url, applyUrl: j.applyUrl || j.url, contactEmail: j.contactEmail || null, candidateCountry: cand.name,
             ...(includeDescription ? { description: j.description } : {}) };

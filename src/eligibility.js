@@ -176,6 +176,11 @@ function descriptionCheck(job, cand, fallback) {
 const short = (s) => (s.length > 90 ? `${s.slice(0, 87)}...` : s).replace(/\s+/g, ' ').trim();
 const context = (d, i, len) => d.slice(Math.max(0, i - 30), i + len + 30);
 
+/** Job title without the stray bullets/dashes some feeds put in front ("- DevOps Engineer"). */
+export function cleanTitle(title) {
+    return String(title || '').replace(/\s+/g, ' ').replace(/^[\s\-–—•·|:*]+/, '').trim();
+}
+
 /** Smallest "N+ years" figure in the text, or null. */
 export function minYears(text) {
     const nums = [...(text || '').matchAll(/(\d{1,2})\s*(?:\+|-\s*\d{1,2}|–\s*\d{1,2}|to\s*\d{1,2})?\s*(?:\+\s*)?(?:years?|yrs?)\b(?!\s*old)/gi)]

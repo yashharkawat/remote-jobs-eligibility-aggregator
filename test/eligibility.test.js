@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, resolveCountry } from '../src/eligibility.js';
+import { classify, resolveCountry, cleanTitle } from '../src/eligibility.js';
 
 const india = resolveCountry('India');
 const v = (job) => classify({ description: '', ...job }, india).eligibility;
@@ -32,4 +32,10 @@ test('description restrictions still apply', () => {
 test('"work from anywhere in the EU" is not worldwide (21 Sep: Makersite came back "worldwide")', () => {
     assert.equal(v({ title: 'Data Scientist', locationRaw: 'Remote', description: 'Remote-First Flexibility - Work from anywhere in the EU, with the option to' }), 'restricted');
     assert.equal(v({ title: 'Data Scientist', locationRaw: 'Remote', description: 'Work from anywhere in Asia.' }), 'region');
+});
+
+test('stray leading punctuation is stripped from titles (22 Sep: Tether "- DevOps Engineer")', () => {
+    assert.equal(cleanTitle('- DevOps Engineer'), 'DevOps Engineer');
+    assert.equal(cleanTitle(' • Senior  Engineer '), 'Senior Engineer');
+    assert.equal(cleanTitle('C++ Engineer - Remote'), 'C++ Engineer - Remote');
 });

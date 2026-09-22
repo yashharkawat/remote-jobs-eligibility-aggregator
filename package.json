@@ -1,6 +1,6 @@
 {
   "name": "remote-jobs-eligibility-aggregator",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "type": "module",
   "description": "Aggregates open remote-job feeds and tells you which jobs a candidate in a given country can actually apply to.",
   "main": "src/main.js",
