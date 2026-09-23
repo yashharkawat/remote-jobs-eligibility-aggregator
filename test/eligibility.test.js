@@ -39,3 +39,11 @@ test('stray leading punctuation is stripped from titles (22 Sep: Tether "- DevOp
     assert.equal(cleanTitle(' • Senior  Engineer '), 'Senior Engineer');
     assert.equal(cleanTitle('C++ Engineer - Remote'), 'C++ Engineer - Remote');
 });
+
+test('"work from anywhere with the setup that suits you" is a perk, not worldwide (23 Sep: Camunda came back "worldwide")', () => {
+    assert.equal(v({ title: 'Senior Software Engineer', locationRaw: '', description: 'Benefits where applicable. - Remote & Flexible: Work from anywhere with the setup that suits you' }), 'unclear');
+});
+
+test('"work from anywhere in the world" is still worldwide', () => {
+    assert.equal(v({ title: 'Software Engineer', locationRaw: '', description: 'We are fully remote. You can work from anywhere in the world.' }), 'worldwide');
+});

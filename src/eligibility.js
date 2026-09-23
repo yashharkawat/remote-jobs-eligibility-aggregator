@@ -161,7 +161,10 @@ function descriptionCheck(job, cand, fallback) {
     if (fallback.eligibility === 'unclear' && WORLDWIDE_PROSE.test(d)) {
         const m = d.match(WORLDWIDE_PROSE);
         // "work from anywhere in the EU" is a region rule, not a worldwide one.
-        const tail = d.slice(m.index + m[0].length, m.index + m[0].length + 40).match(/^\s*(?:in|within|across)\s+(?:the\s+)?([^.,;\n]+)/i);
+        const after = d.slice(m.index + m[0].length, m.index + m[0].length + 40);
+        // "Work from anywhere with the setup that suits you" is a perk (home/cafe), not a hiring-location rule (23 Sep: Camunda).
+        if (/^work from anywhere$/i.test(m[0]) && /^\s*(?:with|using|on)\b/i.test(after)) return fallback;
+        const tail = after.match(/^\s*(?:in|within|across)\s+(?:the\s+)?([^.,;\n]+)/i);
         if (tail) {
             const w = mentions(tail[1]);
             const mine = w.countries.includes(cand.name) || w.regions.some((r) => cand.regions.includes(r));
@@ -174,7 +177,7 @@ function descriptionCheck(job, cand, fallback) {
 }
 
 const short = (s) => (s.length > 90 ? `${s.slice(0, 87)}...` : s).replace(/\s+/g, ' ').trim();
-const context = (d, i, len) => d.slice(Math.max(0, i - 30), i + len + 30);
+const context = (d, i, len) => d.slice(Math.max(0, i - 30), i + len + 30).replace(/^\S*\s/, (w) => (i > 30 ? '' : w));
 
 /** Job title without the stray bullets/dashes some feeds put in front ("- DevOps Engineer"). */
 export function cleanTitle(title) {
