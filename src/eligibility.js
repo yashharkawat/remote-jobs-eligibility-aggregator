@@ -106,6 +106,8 @@ const DESC_RULES = [
     [/\bno (visa )?sponsorship\b.{0,80}\b(us|u\.s\.|united states)\b/i, 'United States'],
 ];
 
+const WORK_AUTH_LIST = /\b(work authori[sz]ation|authori[sz]ed to work|right to work|eligible to work|legally (?:able|permitted) to work)\s+in\s+(?:the\s+|one of\s+(?:the\s+)?)?([^.;:\n]{2,80})/i;
+
 const TZ_RULE = /(?:within|overlap(?:ping)?(?: with)?|\+\/?-|±)\s*(\d{1,2})\s*(?:h|hrs?|hours?)\s*(?:of|with|from)?\s*(utc|gmt|est|et|edt|pst|pt|pdt|cst|ct|cet|cest|ist|bst)\b/i;
 const TZ_RULE_B = /\b(utc|gmt|est|edt|pst|pdt|cst|cet|cest|ist|bst)\s*\(?\s*(?:\+\/?-|±)\s*(\d{1,2})\s*(?:h|hrs?|hours?)/i;
 const TZ_OFFSET = { utc: 0, gmt: 0, bst: 1, cet: 1, cest: 2, est: -5, et: -5, edt: -4, cst: -6, ct: -6, pst: -8, pt: -8, pdt: -7, ist: 5.5 };
@@ -140,6 +142,14 @@ export function classify(job, cand) {
 
 function descriptionCheck(job, cand, fallback) {
     const d = job.description || '';
+    // "work authorization in the US, UK, or Canada" names several places at once (24 Sep: Anthropic Fellows came back "worldwide").
+    const auth = d.match(WORK_AUTH_LIST);
+    if (auth) {
+        const w = mentions(auth[2]);
+        const mine = w.countries.includes(cand.name) || w.regions.some((r) => cand.regions.includes(r));
+        if (mine) return { eligibility: w.countries.includes(cand.name) ? 'country' : 'region', eligibilityReason: `Description: "${short(auth[0])}"` };
+        if (w.countries.length || w.regions.length) return { eligibility: 'restricted', eligibilityReason: `Description limits it to ${[...w.countries, ...w.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(auth[0])}"` };
+    }
     for (const [re, place] of DESC_RULES) {
         const m = d.match(re);
         if (!m) continue;

@@ -163,6 +163,8 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.10 (24 Sep 2026)** - "work authorization in the US, UK, or Canada" style lists in a description now restrict the job
+  to those countries, even when the board tags it "Anywhere in the World".
 - **0.1.9 (23 Sep 2026)** - "work from anywhere with the setup that suits you" (a home-office perk) no longer marks a job
   worldwide; eligibility quotes no longer start mid-word.
 - **0.1.8 (22 Sep 2026)** - stray bullets or dashes at the start of a job title ("- DevOps Engineer") are stripped.
