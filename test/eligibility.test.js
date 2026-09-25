@@ -52,3 +52,10 @@ test('work authorization in a list of countries is a restriction (24 Sep: Anthro
     assert.equal(v({ title: 'Anthropic Fellows Program', locationRaw: 'Anywhere in the World', description: 'Logistics Requirements: To participate in the Fellows program, you must have work authorization in the US, UK, or Canada and be located in that country during the program.' }), 'restricted');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote', description: 'You must be authorized to work in India or Singapore.' }), 'country');
 });
+
+test('a bare city pins the job to its country (25 Sep: Phantasma Labs "Berlin" came back "unclear")', () => {
+    assert.equal(v({ title: 'Machine Learning Engineer', locationRaw: 'Berlin', description: '' }), 'restricted');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, Bengaluru', description: '' }), 'country');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Vienna', description: '' }), 'restricted');
+    assert.equal(v({ title: 'Product Builder', locationRaw: 'Remote', description: '' }), 'unclear');
+});

@@ -57,6 +57,25 @@ const OTHER_COUNTRIES = ['afghanistan', 'albania', 'algeria', 'armenia', 'austri
     'montenegro', 'mozambique', 'myanmar', 'namibia', 'niger', 'papua new guinea', 'sudan', 'suriname', 'syria', 'tajikistan', 'togo',
     'trinidad', 'turkmenistan', 'yemen', 'kosovo', 'curacao', 'aruba'];
 
+// A bare city ("Berlin") pins the job to that city's country (25 Sep: Phantasma Labs "Berlin" came back "unclear").
+const CITIES = {
+    India: ['bangalore', 'bengaluru', 'mumbai', 'delhi', 'new delhi', 'gurgaon', 'gurugram', 'noida', 'hyderabad', 'pune', 'chennai', 'kolkata', 'ahmedabad', 'jaipur', 'kochi'],
+    Germany: ['berlin', 'munich', 'münchen', 'hamburg', 'frankfurt', 'cologne', 'köln', 'stuttgart', 'düsseldorf', 'dusseldorf', 'leipzig', 'dresden', 'hannover', 'nuremberg', 'nürnberg', 'bonn', 'karlsruhe'],
+    'United Kingdom': ['london', 'manchester', 'edinburgh', 'bristol', 'cambridge', 'oxford', 'glasgow', 'leeds', 'birmingham'],
+    France: ['paris', 'lyon', 'toulouse', 'marseille', 'nantes', 'bordeaux', 'lille'],
+    Netherlands: ['amsterdam', 'rotterdam', 'utrecht', 'eindhoven', 'the hague'],
+    Spain: ['madrid', 'barcelona', 'valencia', 'seville', 'malaga', 'málaga'],
+    Portugal: ['lisbon', 'lisboa', 'porto'],
+    Italy: ['milan', 'milano', 'rome', 'roma', 'turin', 'torino'],
+    Poland: ['warsaw', 'krakow', 'kraków', 'wroclaw', 'wrocław', 'gdansk', 'poznan'],
+    Switzerland: ['zurich', 'zürich', 'geneva', 'basel', 'lausanne'],
+    Sweden: ['stockholm', 'gothenburg', 'malmö', 'malmo'],
+    Ireland: ['dublin', 'cork'],
+    'United States': ['new york', 'nyc', 'san francisco', 'seattle', 'austin', 'boston', 'chicago', 'los angeles', 'denver', 'atlanta', 'miami', 'palo alto', 'mountain view', 'sf bay area', 'bay area'],
+    Canada: ['toronto', 'vancouver', 'montreal', 'montréal', 'ottawa', 'calgary', 'waterloo'],
+    Australia: ['sydney', 'melbourne', 'brisbane', 'perth'],
+};
+
 const REGION_WORDS = ['north america', 'latin america', 'south america', 'southeast asia', 'south asia', 'east asia', 'middle east', 'european union',
     'americas', 'europe', 'emea', 'apac', 'asia', 'africa', 'oceania', 'latam', 'mena', 'dach', 'nordics', 'cee', 'anz', 'apj', 'asean', 'gcc', 'eu', 'amer'];
 
@@ -84,6 +103,13 @@ function mentions(text) {
         if (words.some((a) => new RegExp(`(^|[^a-z])${esc(a)}([^a-z]|$)`).test(t))) countries.add(name);
     }
     for (const c of OTHER_COUNTRIES) if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add(c.replace(/\b[a-z]/g, (x) => x.toUpperCase()));
+    for (const [name, list] of Object.entries(CITIES)) {
+        if (!COUNTRIES[name]) continue;
+        if (list.some((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t))) countries.add(name);
+    }
+    for (const c of ['vienna', 'wien', 'brussels', 'copenhagen', 'oslo', 'helsinki', 'prague', 'budapest', 'tallinn', 'tel aviv', 'athens']) {
+        if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add({ vienna: 'Austria', wien: 'Austria', brussels: 'Belgium', copenhagen: 'Denmark', oslo: 'Norway', helsinki: 'Finland', prague: 'Czechia', budapest: 'Hungary', tallinn: 'Estonia', 'tel aviv': 'Israel', athens: 'Greece' }[c]);
+    }
     for (const [code, name] of Object.entries(SAFE_CODES)) {
         if (new RegExp(`(^|[^A-Za-z])${code}([^A-Za-z]|$)`).test(text)) countries.add(name);
     }

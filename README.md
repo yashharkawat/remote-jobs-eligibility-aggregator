@@ -163,6 +163,8 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.11 (25 Sep 2026)** - a location that is only a city ("Berlin", "London", "Bengaluru") now counts as that city's
+  country, so city-pinned jobs are no longer shown as "unclear".
 - **0.1.10 (24 Sep 2026)** - "work authorization in the US, UK, or Canada" style lists in a description now restrict the job
   to those countries, even when the board tags it "Anywhere in the World".
 - **0.1.9 (23 Sep 2026)** - "work from anywhere with the setup that suits you" (a home-office perk) no longer marks a job
