@@ -23,6 +23,8 @@ const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39'
 export const text = (html) => (html || '')
     .replace(/<(br|\/p|\/li|\/div|\/h\d)\s*\/?>/gi, '\n').replace(/<li[^>]*>/gi, '- ').replace(/<[^>]+>/g, '')
     .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) => ENT[e] ?? (e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)) : m))
+    // some feeds (arbeitnow) send the markup entity-encoded, so the tags only appear after decoding
+    .replace(/<(br|\/p|\/li|\/div|\/h\d)\s*\/?>/gi, '\n').replace(/<\/?[a-z][a-z0-9]*(\s[^>]*)?>/gi, '')
     .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
 
 const iso = (d) => { const t = typeof d === 'number' ? new Date(d * (d < 1e12 ? 1000 : 1)) : new Date(d); return Number.isNaN(t.getTime()) ? null : t.toISOString(); };

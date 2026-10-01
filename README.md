@@ -163,6 +163,9 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.12 (1 Oct 2026)** - years of experience stated in the job title ("8+ Years Exp") now count toward `maxYearsRequired`;
+  a region in the title ("... - EMEA") restricts the job even when the location only says "Remote"; leftover HTML tags no
+  longer show up in `eligibilityReason`.
 - **0.1.11 (25 Sep 2026)** - a location that is only a city ("Berlin", "London", "Bengaluru") now counts as that city's
   country, so city-pinned jobs are no longer shown as "unclear".
 - **0.1.10 (24 Sep 2026)** - "work authorization in the US, UK, or Canada" style lists in a description now restrict the job

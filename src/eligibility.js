@@ -163,6 +163,11 @@ export function classify(job, cand) {
             return { eligibility: 'restricted', eligibilityReason: `Limited to ${[...m.countries, ...m.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(loc)}"` };
         }
     }
+    // Location says nothing useful ("Remote"), but a title like "Forward Deployed Engineer - EMEA" still scopes the hire (1 Oct: came back "worldwide").
+    const t = mentions(job.title || '');
+    if ((t.countries.length || t.regions.length) && !(t.countries.includes(cand.name) || t.regions.some((r) => myRegions.has(r)))) {
+        return { eligibility: 'restricted', eligibilityReason: `Title limits it to ${[...t.countries, ...t.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(job.title)}"` };
+    }
     return descriptionCheck(job, cand, { eligibility: 'unclear', eligibilityReason: loc ? `Location "${short(loc)}" does not name a country or region` : 'No location restriction stated' });
 }
 

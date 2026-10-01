@@ -10,8 +10,10 @@ try {
     const input = (await Actor.getInput()) ?? {};
     const {
         candidateCountry = 'India', keywords = [], titleMustMatch = false, excludeKeywords = [], eligibility = 'eligible_and_unclear',
-        maxYearsRequired, postedWithinDays = 14, sources = Object.keys(SOURCES), maxItems = 200, includeDescription = false,
+        maxYearsRequired, postedWithinDays = 14, maxItems = 200, includeDescription = false,
     } = input;
+    // Single-board builds (boards/<board>) pin one feed via FIXED_SOURCE; the aggregator reads `sources` from input.
+    const sources = process.env.FIXED_SOURCE ? [process.env.FIXED_SOURCE] : (input.sources ?? Object.keys(SOURCES));
 
     const cand = resolveCountry(candidateCountry);
     if (!cand.regions.length) log.warning(`"${candidateCountry}" is not in the built-in country list: only exact country-name matches and worldwide jobs can be recognised.`);
@@ -43,7 +45,7 @@ try {
         const hay = titleMustMatch ? title : `${title} ${(j.tags || []).join(' ').toLowerCase()} ${(j.description || '').toLowerCase()}`;
         if (kws.length && !kws.some((k) => hay.includes(k))) { dropped.keyword++; continue; }
         if (excl.some((k) => new RegExp(`(^|[^a-z])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(title))) { dropped.excluded++; continue; }
-        const yrs = minYears(j.description);
+        const yrs = minYears(j.title) ?? minYears(j.description); // "... | 8+ Years Exp" in the title is the headline ask
         if (maxYearsRequired != null && yrs != null && yrs > maxYearsRequired) { dropped.years++; continue; }
 
         const verdict = classify(j, cand);

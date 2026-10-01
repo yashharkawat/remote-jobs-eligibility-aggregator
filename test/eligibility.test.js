@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, resolveCountry, cleanTitle } from '../src/eligibility.js';
+import { classify, resolveCountry, cleanTitle, minYears } from '../src/eligibility.js';
+import { text } from '../src/sources.js';
 
 const india = resolveCountry('India');
 const v = (job) => classify({ description: '', ...job }, india).eligibility;
@@ -58,4 +59,20 @@ test('a bare city pins the job to its country (25 Sep: Phantasma Labs "Berlin" c
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, Bengaluru', description: '' }), 'country');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Vienna', description: '' }), 'restricted');
     assert.equal(v({ title: 'Product Builder', locationRaw: 'Remote', description: '' }), 'unclear');
+});
+
+test('a region in the title also overrides a bare "Remote" location (1 Oct: GitLab "... - EMEA" came back "worldwide")', () => {
+    assert.equal(v({ title: 'Forward Deployed Engineer - EMEA', locationRaw: 'Remote', description: 'Remote-Global. Work from anywhere in the world.' }), 'restricted');
+    assert.equal(v({ title: 'Forward Deployed Engineer', locationRaw: 'Remote', description: 'We hire from anywhere in the world.' }), 'worldwide');
+    assert.equal(v({ title: 'Support Engineer, APAC', locationRaw: 'Remote' }), 'unclear');
+});
+
+test('years in the title are read (1 Oct: "8+ Years Exp" passed a 5-year cap)', () => {
+    assert.equal(minYears('ServiceNow Developer | 8+ Years Exp| IST Time | Remote'), 8);
+    assert.equal(minYears('Senior Fullstack Developer'), null);
+});
+
+test('entity-encoded markup is stripped from descriptions (1 Oct: reason showed raw span tags)', () => {
+    assert.equal(text('&lt;span style="color: white;"&gt;Remote-Global&lt;/span&gt;&lt;/div&gt;&lt;div class="x"&gt;Next'), 'Remote-Global\nNext');
+    assert.equal(text('latency &lt; 5 ms and x &gt; y'), 'latency < 5 ms and x > y');
 });
