@@ -191,6 +191,10 @@ function descriptionCheck(job, cand, fallback) {
     if (/\((m\/w\/d|w\/m\/d|m\/f\/d|f\/m\/d|m\/f\/x|f\/m\/x|h\/f|f\/h|m\/w\/x|all genders)\)/i.test(job.title || '') && !['Germany', 'France', 'Switzerland'].includes(cand.name)) {
         return { eligibility: 'restricted', eligibilityReason: `Title uses a German/French local-hire marker: "${short(job.title)}"` };
     }
+    // German job-title grammar ("Softwareentwickler/in", "Entwickler:in") marks a local hire even without (m/w/d) (2 Oct: Arbeitnow, a small Bavarian town came back "unclear").
+    if (/[a-zäöüß](?:\/in|:in|\*in|\/-in)\b|\b(?:software)?entwickler\b|\bmitarbeiter\b/i.test(job.title || '') && !['Germany', 'Switzerland'].includes(cand.name)) {
+        return { eligibility: 'restricted', eligibilityReason: `Title is a German-language local posting: "${short(job.title)}"` };
+    }
     const where = `${job.locationRaw || ''} ${d}`;
     const a = where.match(TZ_RULE); const b = a ? null : where.match(TZ_RULE_B);
     const tz = a ? [a[0], a[1], a[2]] : b ? [b[0], b[2], b[1]] : null;

@@ -163,6 +163,7 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.13 (2 Oct 2026)** - German-language job titles ("Softwareentwickler/in", "Entwickler:in") are now treated as local hires, so a German posting from a small town no longer comes back `unclear` for candidates outside Germany and Switzerland.
 - **0.1.12 (1 Oct 2026)** - years of experience stated in the job title ("8+ Years Exp") now count toward `maxYearsRequired`;
   a region in the title ("... - EMEA") restricts the job even when the location only says "Remote"; leftover HTML tags no
   longer show up in `eligibilityReason`.

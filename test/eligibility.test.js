@@ -76,3 +76,10 @@ test('entity-encoded markup is stripped from descriptions (1 Oct: reason showed 
     assert.equal(text('&lt;span style="color: white;"&gt;Remote-Global&lt;/span&gt;&lt;/div&gt;&lt;div class="x"&gt;Next'), 'Remote-Global\nNext');
     assert.equal(text('latency &lt; 5 ms and x &gt; y'), 'latency < 5 ms and x > y');
 });
+
+test('German-language job titles are local hires (2 Oct: "Softwareentwickler/in" in Markt Indersdorf came back "unclear")', () => {
+    assert.equal(v({ title: 'Java Softwareentwickler/in mit Karriereambitionen', locationRaw: 'Markt Indersdorf' }), 'restricted');
+    assert.equal(v({ title: 'Frontend Entwickler:in', locationRaw: 'Remote' }), 'restricted');
+    assert.equal(v({ title: 'Senior Software Engineer, Quality', locationRaw: 'Remote' }), 'unclear');
+    assert.equal(v({ title: 'Sign-in Platform Engineer', locationRaw: 'Remote' }), 'unclear');
+});
