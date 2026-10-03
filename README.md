@@ -1,9 +1,18 @@
 # Worldwide Remote Jobs Scraper - find remote jobs you can apply to from your country
 
+**One run reads 8 remote job boards and tells you, job by job, whether someone in your country can apply.** Real rows
+from a run on 3 Oct 2026 for a candidate in India:
+
+| Job | `eligibility` | `eligibilityReason` (quoted from the posting) |
+|---|---|---|
+| Kantiv - Agentic Systems Engineer | `country` | Location lists India: "India" |
+| Lemon.io - Senior UI & UX Designer | `region` | Location lists APAC, which includes India: "Europe, LATAM, APAC, the U.S., Canada" |
+| Datamint - Rust Systems Engineer | `worldwide` | Location says "Remote (Global)" |
+| Perry Street - Senior Mobile Developer (iOS) | `restricted` | Limited to NORTH AMERICA, LATAM: "Remote (North America / LatAm), Full-Time" |
+
 **Most "remote" jobs are not remote for you.** They are US-only, EU-only, or locked to a timezone, and you find that
-out after reading the whole posting. This Actor reads **8 remote job boards in one run**, removes duplicates, and tells
-you for every job whether someone living in **your country** can actually apply - with the exact words from the posting
-as proof.
+out after reading the whole posting. This Actor removes duplicates across the boards and gives every job a verdict for
+**your country**, with the exact words from the posting as proof.
 
 Use it as a **remote jobs API**, a **work-from-anywhere job feed**, or an **MCP tool for AI agents**. No login, no
 cookies, no proxies, no API keys.
@@ -163,6 +172,7 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.14 (3 Oct 2026)** - Hacker News posts that open paragraphs with `<p>` no longer run the header into the body (a "Remote (North America / LatAm)" job had come back `worldwide` because the prose said "members worldwide"); "European time zones" now counts as a Europe rule; README opens with real example rows.
 - **0.1.13 (2 Oct 2026)** - German-language job titles ("Softwareentwickler/in", "Entwickler:in") are now treated as local hires, so a German posting from a small town no longer comes back `unclear` for candidates outside Germany and Switzerland.
 - **0.1.12 (1 Oct 2026)** - years of experience stated in the job title ("8+ Years Exp") now count toward `maxYearsRequired`;
   a region in the title ("... - EMEA") restricts the job even when the location only says "Remote"; leftover HTML tags no

@@ -83,3 +83,15 @@ test('German-language job titles are local hires (2 Oct: "Softwareentwickler/in"
     assert.equal(v({ title: 'Senior Software Engineer, Quality', locationRaw: 'Remote' }), 'unclear');
     assert.equal(v({ title: 'Sign-in Platform Engineer', locationRaw: 'Remote' }), 'unclear');
 });
+
+test('HN <p> paragraphs split the header from the body (3 Oct: "Remote (North America / LatAm)" came back "worldwide")', () => {
+    const body = text('Perry Street Software | Senior Mobile Developer | Remote (North America / LatAm), Full-Time<p>Our brands reach 30 million members worldwide.');
+    assert.equal(body.split('\n')[0], 'Perry Street Software | Senior Mobile Developer | Remote (North America / LatAm), Full-Time');
+    assert.equal(v({ title: 'Senior Mobile Developer', locationRaw: 'Remote (North America / LatAm), Full-Time' }), 'restricted');
+    assert.equal(text('a<p class="x">b').split('\n').length, 2);
+});
+
+test('"European time zones" is a Europe rule (3 Oct: All Gravy came back "unclear")', () => {
+    assert.equal(v({ title: 'Senior Software Engineer', locationRaw: 'REMOTE (European time zones) or ONSITE' }), 'restricted');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote (European time zones or India)' }), 'country');
+});

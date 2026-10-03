@@ -21,10 +21,11 @@ async function get(url, as = 'json') {
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'", '#x27': "'", '#x2F': '/', rsquo: "'", lsquo: "'", rdquo: '"', ldquo: '"', ndash: '-', mdash: '-', hellip: '...' };
 export const text = (html) => (html || '')
-    .replace(/<(br|\/p|\/li|\/div|\/h\d)\s*\/?>/gi, '\n').replace(/<li[^>]*>/gi, '- ').replace(/<[^>]+>/g, '')
+    // HN comments open paragraphs with <p> and never close them (3 Oct: a header ran into the body, "worldwide" in the prose made a North America/LatAm job "worldwide")
+    .replace(/<(br|p|\/p|\/li|\/div|\/h\d)(\s[^>]*)?\s*\/?>/gi, '\n').replace(/<li[^>]*>/gi, '- ').replace(/<[^>]+>/g, '')
     .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) => ENT[e] ?? (e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)) : m))
     // some feeds (arbeitnow) send the markup entity-encoded, so the tags only appear after decoding
-    .replace(/<(br|\/p|\/li|\/div|\/h\d)\s*\/?>/gi, '\n').replace(/<\/?[a-z][a-z0-9]*(\s[^>]*)?>/gi, '')
+    .replace(/<(br|p|\/p|\/li|\/div|\/h\d)(\s[^>]*)?\s*\/?>/gi, '\n').replace(/<\/?[a-z][a-z0-9]*(\s[^>]*)?>/gi, '')
     .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
 
 const iso = (d) => { const t = typeof d === 'number' ? new Date(d * (d < 1e12 ? 1000 : 1)) : new Date(d); return Number.isNaN(t.getTime()) ? null : t.toISOString(); };
@@ -114,8 +115,8 @@ export const SOURCES = {
                 // job seekers sometimes post in the hiring thread
                 if (/^\s*location\s*:/i.test(head) || /willing to relocate|r[ée]sum[ée]\/cv|seeking work/i.test(body.slice(0, 600))) continue;
                 const parts = head.split(/\s*[|•·]\s*|\s+[-–—]\s+/).map((p) => p.trim()).filter(Boolean);
-                const loc = parts.filter((p) => /remote|onsite|on-site|hybrid|worldwide|anywhere|\b(US|USA|UK|EU|EMEA|APAC|LATAM)\b|europe|america|asia|india|canada|germany/i.test(p) && !/https?:/.test(p)).join(', ');
-                const ROLE = /[^.|,;:()\n]{0,40}\b(engineers?|developers?|designers?|scientists?|architects?|devops|sre|analysts?|full[- ]?stack|back[- ]?end|front[- ]?end)\b[^.|,;:()\n]{0,25}/i;
+                const loc = parts.filter((p) => /remote|onsite|on-site|hybrid|worldwide|anywhere|\b(US|USA|UK|EU|EMEA|APAC|LATAM)\b|europe|america|asia|india|canada|germany/i.test(p) && !/https?:/.test(p) && p.length < 120).join(', ');
+                const ROLE = /(?:\b[^.|,;:()\n]{0,40})?\b(engineers?|developers?|designers?|scientists?|architects?|devops|sre|analysts?|full[- ]?stack|back[- ]?end|front[- ]?end)\b[^.|,;:()\n]{0,25}/i;
                 const title = parts.slice(1).find((p) => ROLE.test(p) && p.length < 120) || (body.match(ROLE) || [])[0]?.trim() || 'Multiple roles - see post';
                 const link = (body.match(/https?:\/\/[^\s)>\]]+/) || [])[0] || null;
                 const email = (body.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/) || [])[0] || null;

@@ -116,6 +116,8 @@ function mentions(text) {
     const regions = REGION_WORDS.filter((r) => (r.length <= 3
         ? new RegExp(`(^|[^A-Za-z])${r.toUpperCase()}([^A-Za-z]|$)`).test(text)
         : new RegExp(`(^|[^a-z])${esc(r)}([^a-z]|$)`).test(t)));
+    // "European time zones" / "European hours" name Europe without the word "Europe" (3 Oct: All Gravy came back "unclear").
+    if (/(^|[^a-z])european([^a-z]|$)/.test(t) && !regions.includes('europe') && !regions.includes('european union')) regions.push('europe');
     return { countries: [...countries], regions };
 }
 
