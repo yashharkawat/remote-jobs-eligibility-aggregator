@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, resolveCountry, cleanTitle, minYears } from '../src/eligibility.js';
-import { text } from '../src/sources.js';
+import { text, hnTitle } from '../src/sources.js';
 
 const india = resolveCountry('India');
 const v = (job) => classify({ description: '', ...job }, india).eligibility;
@@ -94,4 +94,21 @@ test('HN <p> paragraphs split the header from the body (3 Oct: "Remote (North Am
 test('"European time zones" is a Europe rule (3 Oct: All Gravy came back "unclear")', () => {
     assert.equal(v({ title: 'Senior Software Engineer', locationRaw: 'REMOTE (European time zones) or ONSITE' }), 'restricted');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote (European time zones or India)' }), 'country');
+});
+
+test('HN header: role without an engineer/developer word still comes from the header, not a body fragment', () => {
+    const split = (h) => h.split(/\s*[|•·]\s*|\s+[-–—]\s+/).map((p) => p.trim()).filter(Boolean);
+    assert.deepEqual(hnTitle(split('MaFi Games | Senior SWE/Game dev | Contract preferred | Remote | C#'), 'Hi, we’re looking for an experienced software engineer to join our team'),
+        { title: 'Senior SWE/Game dev', company: 'MaFi Games' });
+    assert.deepEqual(hnTitle(split('8X Energy | AI / Machine Learning Lead (fast track to CTO) | Frederick MD or Remote | Equity'), 'You should be comfortable with the full stack from model development to deployment'),
+        { title: 'AI / Machine Learning Lead (fast track to CTO)', company: '8X Energy' });
+});
+test('HN header that opens with the role has no company', () => {
+    assert.deepEqual(hnTitle(['Senior Python Backend Engineer', 'REMOTE (EMEA/APAC)'], 'We are looking for Python backend engineers'),
+        { title: 'Senior Python Backend Engineer', company: '' });
+});
+test('HN header: normal Company | Role | Location is unchanged', () => {
+    assert.deepEqual(hnTitle(['SingleStore', 'Software Engineer, AI Platform', 'Full Time, Remote India'], ''),
+        { title: 'Software Engineer, AI Platform', company: 'SingleStore' });
+    assert.equal(hnTitle(['Acme', 'Remote', 'https://acme.dev'], 'We sell anvils.').title, 'Multiple roles - see post');
 });

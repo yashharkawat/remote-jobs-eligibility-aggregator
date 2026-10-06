@@ -31,6 +31,27 @@ export const text = (html) => (html || '')
 const iso = (d) => { const t = typeof d === 'number' ? new Date(d * (d < 1e12 ? 1000 : 1)) : new Date(d); return Number.isNaN(t.getTime()) ? null : t.toISOString(); };
 const money = (min, max, cur = 'USD', per = '') => (min || max ? `${cur || ''} ${[min, max].filter(Boolean).map((n) => Number(n).toLocaleString('en-US')).join(' - ')}${per ? ` / ${per}` : ''}`.trim() : null);
 
+// Title + company from an HN "Who is hiring?" header ("Company | Role | Location | ...").
+// 6 Oct: "MaFi Games | Senior SWE/Game dev | ..." had no engineer/developer word, so the title fell back to a body
+// fragment ("'re looking for an experienced software engineer..."), and "Senior Python Backend Engineer | REMOTE"
+// (no company in the header) came back with the role as the company.
+const HN_LOC = /remote|onsite|on-site|hybrid|worldwide|anywhere|\b(US|USA|UK|EU|EMEA|APAC|LATAM)\b|europe|america|asia|india|canada|germany/i;
+const HN_ROLE = /(?:\b[^.|,;:()\n]{0,40})?\b(engineers?|developers?|designers?|scientists?|architects?|devops|sre|analysts?|full[- ]?stack|back[- ]?end|front[- ]?end)\b[^.|,;:()\n]{0,25}/i;
+const HN_ROLE_LOOSE = /\b(swe|sde|devs?|leads?|programmers?|researchers?|cto|manager|founding|head of)\b/i;
+const HN_BODY_TITLE = /\b(?:(?:Senior|Staff|Lead|Principal|Junior|Founding|Full[- ]?Stack|Back[- ]?end|Front[- ]?end|Software|Data|ML|AI|DevOps|Platform|Product|Mobile|Web|Security|Python|Machine Learning)\s+){1,3}(?:Engineers?|Developers?|Designers?|Scientists?|Architects?|Analysts?)\b/;
+export function hnTitle(parts, body) {
+    const rest = parts.slice(1).filter((p) => p.length < 120 && !/https?:/.test(p));
+    const first = (parts[0] || '').replace(/\(?https?:\/\/[^\s)]*\)?/g, '').trim();
+    const firstIsRole = HN_ROLE.test(first) && first.length < 80 && !/\s(is|are)\s/i.test(first);
+    const title = rest.find((p) => HN_ROLE.test(p))
+        || (firstIsRole ? first : null)
+        || rest.find((p) => HN_ROLE_LOOSE.test(p) && !HN_LOC.test(p) && !/[$€£]\s?\d/.test(p))
+        || (body.match(HN_BODY_TITLE) || [])[0]
+        || 'Multiple roles - see post';
+    const company = firstIsRole && title === first ? '' : first.split(/\s+(is|are|we're|we are|builds?|-)\s+/i)[0].replace(/^at\s+/i, '').trim().slice(0, 60);
+    return { title: title.trim(), company };
+}
+
 export const SOURCES = {
     async himalayas({ maxPerSource }) {
         const out = [];
@@ -116,11 +137,10 @@ export const SOURCES = {
                 if (/^\s*location\s*:/i.test(head) || /willing to relocate|r[ée]sum[ée]\/cv|seeking work/i.test(body.slice(0, 600))) continue;
                 const parts = head.split(/\s*[|•·]\s*|\s+[-–—]\s+/).map((p) => p.trim()).filter(Boolean);
                 const loc = parts.filter((p) => /remote|onsite|on-site|hybrid|worldwide|anywhere|\b(US|USA|UK|EU|EMEA|APAC|LATAM)\b|europe|america|asia|india|canada|germany/i.test(p) && !/https?:/.test(p) && p.length < 120).join(', ');
-                const ROLE = /(?:\b[^.|,;:()\n]{0,40})?\b(engineers?|developers?|designers?|scientists?|architects?|devops|sre|analysts?|full[- ]?stack|back[- ]?end|front[- ]?end)\b[^.|,;:()\n]{0,25}/i;
-                const title = parts.slice(1).find((p) => ROLE.test(p) && p.length < 120) || (body.match(ROLE) || [])[0]?.trim() || 'Multiple roles - see post';
+                const { title, company } = hnTitle(parts, body);
                 const link = (body.match(/https?:\/\/[^\s)>\]]+/) || [])[0] || null;
                 const email = (body.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/) || [])[0] || null;
-                out.push({ source: 'hackernews', sourceId: String(h.objectID), title: title.slice(0, 140), company: (parts[0] || '').replace(/\(?https?:\/\/[^\s)]*\)?/g, '').split(/\s+(is|are|we're|we are|builds?|-)\s+/i)[0].replace(/^at\s+/i, '').trim().slice(0, 60),
+                out.push({ source: 'hackernews', sourceId: String(h.objectID), title: title.slice(0, 140), company,
                     url: `https://news.ycombinator.com/item?id=${h.objectID}`, applyUrl: link, contactEmail: email, locationRaw: loc, tags: ['hn-who-is-hiring'], salary: (head.match(/[$€£]\s?\d[\d,.]*\s?k?(\s?[-–]\s?[$€£]?\s?\d[\d,.]*\s?k?)?/i) || [])[0] || null,
                     employmentType: /contract/i.test(head) ? 'contract' : null, postedAt: iso(h.created_at), description: body });
             }
