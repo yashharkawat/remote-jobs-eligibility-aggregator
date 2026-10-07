@@ -58,6 +58,9 @@ test('a bare city pins the job to its country (25 Sep: Phantasma Labs "Berlin" c
     assert.equal(v({ title: 'Machine Learning Engineer', locationRaw: 'Berlin', description: '' }), 'restricted');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, Bengaluru', description: '' }), 'country');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Vienna', description: '' }), 'restricted');
+    // 7 Oct: WWR "Cairo Governorate" came back "unclear"
+    assert.equal(v({ title: 'Microsoft Dynamics CRM Technical Consultant', locationRaw: 'Cairo Governorate', description: '' }), 'restricted');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, Dubai', description: '' }), 'restricted');
     assert.equal(v({ title: 'Product Builder', locationRaw: 'Remote', description: '' }), 'unclear');
 });
 

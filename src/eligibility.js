@@ -76,7 +76,14 @@ const CITIES = {
     Australia: ['sydney', 'melbourne', 'brisbane', 'perth'],
 };
 
-const REGION_WORDS = ['north america', 'latin america', 'south america', 'southeast asia', 'south asia', 'east asia', 'middle east', 'european union',
+// Capital / hub cities of countries that have no CITIES row (7 Oct: WWR "Cairo Governorate" came back "unclear").
+const OTHER_CITIES = {
+    vienna: 'Austria', wien: 'Austria', brussels: 'Belgium', copenhagen: 'Denmark', oslo: 'Norway', helsinki: 'Finland', prague: 'Czechia', budapest: 'Hungary', tallinn: 'Estonia', 'tel aviv': 'Israel', athens: 'Greece',
+    cairo: 'Egypt', dubai: 'United Arab Emirates', 'abu dhabi': 'United Arab Emirates', riyadh: 'Saudi Arabia', istanbul: 'Turkey', nairobi: 'Kenya', lagos: 'Nigeria', 'cape town': 'South Africa', johannesburg: 'South Africa',
+    'sao paulo': 'Brazil', 'são paulo': 'Brazil', 'buenos aires': 'Argentina', 'mexico city': 'Mexico', bogota: 'Colombia', 'bogotá': 'Colombia', manila: 'Philippines', jakarta: 'Indonesia', 'kuala lumpur': 'Malaysia', bangkok: 'Thailand', tokyo: 'Japan', seoul: 'South Korea',
+};
+
+const REGION_WORDS =['north america', 'latin america', 'south america', 'southeast asia', 'south asia', 'east asia', 'middle east', 'european union',
     'americas', 'europe', 'emea', 'apac', 'asia', 'africa', 'oceania', 'latam', 'mena', 'dach', 'nordics', 'cee', 'anz', 'apj', 'asean', 'gcc', 'eu', 'amer'];
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -107,8 +114,8 @@ function mentions(text) {
         if (!COUNTRIES[name]) continue;
         if (list.some((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t))) countries.add(name);
     }
-    for (const c of ['vienna', 'wien', 'brussels', 'copenhagen', 'oslo', 'helsinki', 'prague', 'budapest', 'tallinn', 'tel aviv', 'athens']) {
-        if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add({ vienna: 'Austria', wien: 'Austria', brussels: 'Belgium', copenhagen: 'Denmark', oslo: 'Norway', helsinki: 'Finland', prague: 'Czechia', budapest: 'Hungary', tallinn: 'Estonia', 'tel aviv': 'Israel', athens: 'Greece' }[c]);
+    for (const [c, name] of Object.entries(OTHER_CITIES)) {
+        if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add(name);
     }
     for (const [code, name] of Object.entries(SAFE_CODES)) {
         if (new RegExp(`(^|[^A-Za-z])${code}([^A-Za-z]|$)`).test(text)) countries.add(name);
