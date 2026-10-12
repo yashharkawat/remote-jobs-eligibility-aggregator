@@ -14,7 +14,9 @@ export function retryAfterMs(header, now = Date.now()) {
     return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, MAX_RETRY_WAIT_MS) : null;
 }
 
-export async function get(url, as = 'json', { retries = 3, backoffMs = 1500 } = {}) {
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function get(url, as = 'json', { retries = 3, backoffMs = 1500, sleep = pause } = {}) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         let wait = backoffMs * attempt;
         try {
@@ -28,14 +30,15 @@ export async function get(url, as = 'json', { retries = 3, backoffMs = 1500 } = 
             return as === 'json' ? await res.json() : await res.text();
         } catch (err) {
             if (err.fatal || attempt === retries) throw err;
-            await new Promise((r) => setTimeout(r, wait));
+            await sleep(wait);
         }
     }
     return null;
 }
 
 /**
- * Walks a paginated feed. `fetchPage(i)` returns that page's rows, or a falsy/empty value when the feed has ended.
+ * Walks a paginated feed. `fetchPage(i)` returns that page's rows, or null when the feed has ended. An empty array
+ * is a page with nothing we keep (every job filtered out) and the walk goes on. At most `maxRows` rows come back.
  * If a later page fails after its retries, the rows already collected are returned and the failure is recorded on
  * the array as `partialError`, so one bad page no longer throws away the 300 jobs fetched before it. A failure on
  * the first page still throws: an empty result must not look like a quiet day on the board.
@@ -51,8 +54,8 @@ export async function paginate(fetchPage, { maxPages, maxRows = Infinity }) {
             out.partialError = `page ${i + 1}: ${err.message}`;
             break;
         }
-        if (!rows?.length) break;
-        out.push(...rows);
+        if (!rows) break;
+        out.push(...rows.slice(0, maxRows - out.length));
     }
     return out;
 }
@@ -94,11 +97,12 @@ export const SOURCES = {
     async himalayas({ maxPerSource }) {
         return paginate(async (page) => {
             const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${page * 20}`);
-            return (d?.jobs || []).map((j) => ({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
+            if (!d?.jobs?.length) return null;
+            return d.jobs.map((j) => ({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
                 locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
                 tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
                 employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) }));
-        }, { maxPages: Math.ceil(maxPerSource / 20) });
+        }, { maxPages: Math.ceil(maxPerSource / 20), maxRows: maxPerSource });
     },
 
     async remoteok() {
@@ -133,17 +137,13 @@ export const SOURCES = {
     },
 
     async arbeitnow({ maxPerSource }) {
-        const out = [];
-        for (let page = 1; out.length < maxPerSource && page <= 5; page++) {
-            const d = await get(`https://www.arbeitnow.com/api/job-board-api?page=${page}`);
-            if (!d?.data?.length) break;
-            for (const j of d.data) {
-                if (!j.remote) continue; // the board also lists on-site jobs in Germany
-                out.push({ source: 'arbeitnow', sourceId: j.slug, title: j.title, company: j.company_name, url: j.url, applyUrl: j.url, locationRaw: j.location || '',
-                    tags: j.tags || [], salary: null, employmentType: (j.job_types || []).join(', ') || null, postedAt: iso(j.created_at), description: text(j.description) });
-            }
-        }
-        return out;
+        return paginate(async (page) => {
+            const d = await get(`https://www.arbeitnow.com/api/job-board-api?page=${page + 1}`);
+            if (!d?.data?.length) return null;
+            // the board also lists on-site jobs in Germany
+            return d.data.filter((j) => j.remote).map((j) => ({ source: 'arbeitnow', sourceId: j.slug, title: j.title, company: j.company_name, url: j.url, applyUrl: j.url, locationRaw: j.location || '',
+                tags: j.tags || [], salary: null, employmentType: (j.job_types || []).join(', ') || null, postedAt: iso(j.created_at), description: text(j.description) }));
+        }, { maxPages: 5, maxRows: maxPerSource });
     },
 
     async workingnomads() {
@@ -158,10 +158,10 @@ export const SOURCES = {
         const s = await get('https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=10');
         const story = (s.hits || []).find((h) => /who is hiring/i.test(h.title || ''));
         if (!story) return [];
-        const out = [];
-        for (let page = 0; page < 10 && out.length < maxPerSource; page++) {
+        return paginate(async (page) => {
             const c = await get(`https://hn.algolia.com/api/v1/search_by_date?tags=comment,story_${story.objectID}&hitsPerPage=200&page=${page}`);
-            if (!c?.hits?.length) break;
+            if (!c?.hits?.length) return null;
+            const out = [];
             for (const h of c.hits) {
                 if (String(h.parent_id) !== String(story.objectID) || !h.comment_text) continue;
                 const body = text(h.comment_text); const head = body.split('\n')[0];
@@ -177,7 +177,7 @@ export const SOURCES = {
                     url: `https://news.ycombinator.com/item?id=${h.objectID}`, applyUrl: link, contactEmail: email, locationRaw: loc, tags: ['hn-who-is-hiring'], salary: (head.match(/[$€£]\s?\d[\d,.]*\s?k?(\s?[-–]\s?[$€£]?\s?\d[\d,.]*\s?k?)?/i) || [])[0] || null,
                     employmentType: /contract/i.test(head) ? 'contract' : null, postedAt: iso(h.created_at), description: body });
             }
-        }
-        return out;
+            return out;
+        }, { maxPages: 10, maxRows: maxPerSource });
     },
 };

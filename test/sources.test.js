@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { get, paginate, retryAfterMs } from '../src/sources.js';
 
-test('paginate stops at the first empty page', async () => {
-    const pages = [[1, 2], [3], []];
+test('paginate stops when the feed ends (null), not on a page with nothing kept', async () => {
+    const pages = [[1, 2], [], [3], null];
     const calls = [];
     const out = await paginate(async (i) => { calls.push(i); return pages[i]; }, { maxPages: 10 });
     assert.deepEqual([...out], [1, 2, 3]);
-    assert.deepEqual(calls, [0, 1, 2]);
+    assert.deepEqual(calls, [0, 1, 2, 3]);
     assert.equal(out.partialError, undefined);
 });
 
@@ -23,7 +23,7 @@ test('paginate still throws when the first page fails', async () => {
 
 test('paginate respects maxPages and maxRows', async () => {
     assert.equal((await paginate(async (i) => [i], { maxPages: 4 })).length, 4);
-    assert.equal((await paginate(async () => [1, 2, 3], { maxPages: 10, maxRows: 5 })).length, 6); // stops after the page that crosses the limit
+    assert.deepEqual([...(await paginate(async () => [1, 2, 3], { maxPages: 10, maxRows: 5 }))], [1, 2, 3, 1, 2]);
 });
 
 test('retryAfterMs reads seconds and HTTP dates, and caps the wait', () => {
@@ -36,18 +36,29 @@ test('retryAfterMs reads seconds and HTTP dates, and caps the wait', () => {
     assert.equal(retryAfterMs('soon'), null);
 });
 
-test('get retries a 429 and honours Retry-After, but gives up at once on a 404', async (t) => {
+test('get waits for the Retry-After time on a 429, and for the backoff when there is no header', async (t) => {
+    const waits = [];
+    const sleep = async (ms) => { waits.push(ms); };
     const replies = [
-        new Response('slow down', { status: 429, headers: { 'retry-after': '0' } }),
+        new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
+        new Response('still busy', { status: 503 }),
         new Response(JSON.stringify({ ok: true }), { status: 200 }),
     ];
+    t.mock.method(globalThis, 'fetch', async () => replies.shift());
+    assert.deepEqual(await get('https://example.test/feed', 'json', { backoffMs: 7, sleep }), { ok: true });
+    // 2000 comes from the header; 14 is backoffMs x attempt 2, because the 503 carried no header
+    assert.deepEqual(waits, [2000, 14]);
+});
+
+test('get gives up at once on a 404 and after the last retry on a 500', async (t) => {
+    const sleep = async () => {};
     let calls = 0;
-    t.mock.method(globalThis, 'fetch', async () => { calls++; return replies.shift(); });
-    assert.deepEqual(await get('https://example.test/feed', 'json', { backoffMs: 1 }), { ok: true });
-    assert.equal(calls, 2);
+    t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response('gone', { status: 404 }); });
+    await assert.rejects(get('https://example.test/feed', 'json', { sleep }), /HTTP 404/);
+    assert.equal(calls, 1);
 
     calls = 0;
-    t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response('gone', { status: 404 }); });
-    await assert.rejects(get('https://example.test/feed', 'json', { backoffMs: 1 }), /HTTP 404/);
-    assert.equal(calls, 1);
+    t.mock.method(globalThis, 'fetch', async () => { calls++; return new Response('down', { status: 500 }); });
+    await assert.rejects(get('https://example.test/feed', 'json', { sleep }), /HTTP 500/);
+    assert.equal(calls, 3);
 });
