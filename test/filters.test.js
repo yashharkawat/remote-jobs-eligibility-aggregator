@@ -29,7 +29,10 @@ test('keywords that end in a symbol work', () => {
     assert.equal(hit('c++', 'C++ Developer'), true);
     assert.equal(hit('c#', 'C# / .NET Engineer'), true);
     assert.equal(hit('.net', 'Senior .NET Engineer'), true);
-    assert.equal(hit('c++', 'Objective-C Developer'), false);
+    assert.equal(hit('c++', 'Objc++ Developer'), false);
+    assert.equal(hit('c', 'C++ Developer'), false);
+    assert.equal(hit('c', 'C# Engineer'), false);
+    assert.equal(hit('c', 'Embedded C Developer'), true);
 });
 
 test('regex characters in a keyword are taken literally', () => {

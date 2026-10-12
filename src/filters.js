@@ -14,7 +14,8 @@ export function keywordMatcher(keyword) {
     const k = String(keyword || '').toLowerCase().trim();
     if (!k) return () => false;
     const start = /^[a-z0-9]/.test(k) ? '(^|[^a-z0-9])' : '';
-    const end = /[a-z0-9]$/.test(k) ? '(?:\\.?js|s)?(?![a-z0-9])' : '';
+    // "+" and "#" also end the match early, so "c" does not match "c++" or "c#".
+    const end = /[a-z0-9]$/.test(k) ? '(?:\\.?js|s)?(?![a-z0-9+#])' : '';
     const re = new RegExp(`${start}${esc(k).replace(/\s+/g, '[\\s-]*')}${end}`);
     return (text) => re.test(text);
 }
