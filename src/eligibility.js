@@ -128,6 +128,13 @@ function mentions(text) {
     return { countries: [...countries], regions };
 }
 
+/** Regions in a job title. "NA" is only read as North America when it closes the title ("... Engineer - NA"); anywhere else it is too often "n/a" (12 Oct: Camunda "Senior Forward Deployed Engineer - NA" came back "unclear"). */
+function titleMentions(title) {
+    const t = mentions(title || '');
+    if (/(?:[-–—,/|]\s*|\()(?:NA|NAM|NORAM|NAMER)\)?\s*$/.test((title || '').trim()) && !t.regions.includes('north america')) t.regions.push('north america');
+    return t;
+}
+
 const DESC_RULES = [
     // [regex, country/region the job is limited to]
     // upper-case only, so "contact us only if..." does not count
@@ -161,7 +168,7 @@ export function classify(job, cand) {
         if (regionHit) return { eligibility: 'region', eligibilityReason: `Location lists ${regionHit.toUpperCase()}, which includes ${cand.name}: "${short(loc)}"` };
         if (WORLDWIDE.test(loc) && !m.countries.length) {
             // "Anywhere in the World" on the board, but a title like "Developer Advocate - EMEA" still scopes the hire.
-            const t = mentions(job.title || '');
+            const t = titleMentions(job.title);
             const titleMine = t.countries.includes(cand.name) || t.regions.some((r) => myRegions.has(r));
             if ((t.countries.length || t.regions.length) && !titleMine) {
                 return { eligibility: 'restricted', eligibilityReason: `Title limits it to ${[...t.countries, ...t.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(job.title)}"` };
@@ -173,7 +180,7 @@ export function classify(job, cand) {
         }
     }
     // Location says nothing useful ("Remote"), but a title like "Forward Deployed Engineer - EMEA" still scopes the hire (1 Oct: came back "worldwide").
-    const t = mentions(job.title || '');
+    const t = titleMentions(job.title);
     if ((t.countries.length || t.regions.length) && !(t.countries.includes(cand.name) || t.regions.some((r) => myRegions.has(r)))) {
         return { eligibility: 'restricted', eligibilityReason: `Title limits it to ${[...t.countries, ...t.regions.map((r) => r.toUpperCase())].slice(0, 5).join(', ')}: "${short(job.title)}"` };
     }

@@ -172,6 +172,7 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.17 (12 Oct 2026)** - A job title that ends in "- NA" or "(NA)", such as "Senior Forward Deployed Engineer - NA", is now read as North America only, so it comes back `restricted` for candidates elsewhere. Before, it came back `unclear`.
 - **0.1.16 (7 Oct 2026)** - A job whose location is only a city such as "Cairo Governorate", "Dubai" or "Nairobi" is now tied to that city's country, so it comes back `restricted` for candidates elsewhere. Before, it came back `unclear`.
 - **0.1.15 (6 Oct 2026)** - Hacker News: a header role without the word engineer or developer ("Senior SWE/Game dev", "AI / Machine Learning Lead") is now read from the header instead of a sentence from the post, and a header that opens with the role ("Senior Python Backend Engineer | REMOTE") no longer repeats the role as the company.
 - **0.1.14 (3 Oct 2026)** - Hacker News posts that open paragraphs with `<p>` no longer run the header into the body (a "Remote (North America / LatAm)" job had come back `worldwide` because the prose said "members worldwide"); "European time zones" now counts as a Europe rule; README opens with real example rows.

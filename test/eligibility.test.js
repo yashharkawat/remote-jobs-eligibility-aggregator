@@ -115,3 +115,13 @@ test('HN header: normal Company | Role | Location is unchanged', () => {
         { title: 'Software Engineer, AI Platform', company: 'SingleStore' });
     assert.equal(hnTitle(['Acme', 'Remote', 'https://acme.dev'], 'We sell anvils.').title, 'Multiple roles - see post');
 });
+
+test('a closing "- NA" in the title means North America (12 Oct: Camunda "... - NA" came back "unclear")', () => {
+    assert.equal(v({ title: 'Senior Forward Deployed Engineer - NA', locationRaw: 'Remote' }), 'restricted');
+    assert.equal(v({ title: 'Account Executive (NA)', locationRaw: 'Anywhere in the World' }), 'restricted');
+    // a candidate inside North America is not locked out by it
+    assert.equal(classify({ description: '', title: 'Senior Forward Deployed Engineer - NA', locationRaw: 'Remote' }, resolveCountry('Canada')).eligibility, 'unclear');
+    // not at the end, or part of a word: no region read
+    assert.equal(v({ title: 'DNA Analyst', locationRaw: 'Remote' }), 'unclear');
+    assert.equal(v({ title: 'NA Sales Engineer', locationRaw: 'Remote' }), 'unclear');
+});
