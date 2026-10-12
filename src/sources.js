@@ -4,19 +4,60 @@
 
 const UA = 'remote-jobs-eligibility-aggregator/0.1 (+https://apify.com)';
 
-async function get(url, as = 'json') {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+const MAX_RETRY_WAIT_MS = 20_000;
+
+/** Milliseconds a 429/503 asks us to wait ("Retry-After: 5" or an HTTP date), capped; null when the header is absent or unreadable. */
+export function retryAfterMs(header, now = Date.now()) {
+    if (!header) return null;
+    const secs = Number(header);
+    const ms = Number.isFinite(secs) ? secs * 1000 : new Date(header).getTime() - now;
+    return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, MAX_RETRY_WAIT_MS) : null;
+}
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export async function get(url, as = 'json', { retries = 3, backoffMs = 1500, sleep = pause } = {}) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        let wait = backoffMs * attempt;
         try {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: as === 'json' ? 'application/json' : '*/*' }, signal: AbortSignal.timeout(30_000) });
-            if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
+            if (res.status === 429 || res.status >= 500) {
+                // A feed that says when to come back gets that wait, not our fixed backoff.
+                wait = retryAfterMs(res.headers.get('retry-after')) ?? wait;
+                throw new Error(`HTTP ${res.status}`);
+            }
             if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { fatal: true });
             return as === 'json' ? await res.json() : await res.text();
         } catch (err) {
-            if (err.fatal || attempt === 3) throw err;
-            await new Promise((r) => setTimeout(r, 1500 * attempt));
+            if (err.fatal || attempt === retries) throw err;
+            await sleep(wait);
         }
     }
     return null;
+}
+
+/**
+ * Walks a paginated feed. `fetchPage(i)` returns that page's rows, or null when the feed has ended. An empty array
+ * is a page with nothing we keep (every job filtered out) and the walk goes on. At most `maxRows` rows come back.
+ * If a later page fails after its retries, the rows already collected are returned and the failure is recorded on
+ * the array as `partialError`, so one bad page no longer throws away the 300 jobs fetched before it. A failure on
+ * the first page still throws: an empty result must not look like a quiet day on the board.
+ */
+export async function paginate(fetchPage, { maxPages, maxRows = Infinity }) {
+    const out = [];
+    for (let i = 0; i < maxPages && out.length < maxRows; i++) {
+        let rows;
+        try {
+            rows = await fetchPage(i);
+        } catch (err) {
+            if (i === 0) throw err;
+            out.partialError = `page ${i + 1}: ${err.message}`;
+            break;
+        }
+        if (!rows) break;
+        out.push(...rows.slice(0, maxRows - out.length));
+    }
+    return out;
 }
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'", '#x27': "'", '#x2F': '/', rsquo: "'", lsquo: "'", rdquo: '"', ldquo: '"', ndash: '-', mdash: '-', hellip: '...' };
@@ -54,18 +95,14 @@ export function hnTitle(parts, body) {
 
 export const SOURCES = {
     async himalayas({ maxPerSource }) {
-        const out = [];
-        for (let offset = 0; offset < maxPerSource; offset += 20) {
-            const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${offset}`);
-            if (!d?.jobs?.length) break;
-            for (const j of d.jobs) {
-                out.push({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
-                    locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
-                    tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
-                    employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) });
-            }
-        }
-        return out;
+        return paginate(async (page) => {
+            const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${page * 20}`);
+            if (!d?.jobs?.length) return null;
+            return d.jobs.map((j) => ({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
+                locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
+                tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
+                employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) }));
+        }, { maxPages: Math.ceil(maxPerSource / 20), maxRows: maxPerSource });
     },
 
     async remoteok() {
@@ -100,17 +137,13 @@ export const SOURCES = {
     },
 
     async arbeitnow({ maxPerSource }) {
-        const out = [];
-        for (let page = 1; out.length < maxPerSource && page <= 5; page++) {
-            const d = await get(`https://www.arbeitnow.com/api/job-board-api?page=${page}`);
-            if (!d?.data?.length) break;
-            for (const j of d.data) {
-                if (!j.remote) continue; // the board also lists on-site jobs in Germany
-                out.push({ source: 'arbeitnow', sourceId: j.slug, title: j.title, company: j.company_name, url: j.url, applyUrl: j.url, locationRaw: j.location || '',
-                    tags: j.tags || [], salary: null, employmentType: (j.job_types || []).join(', ') || null, postedAt: iso(j.created_at), description: text(j.description) });
-            }
-        }
-        return out;
+        return paginate(async (page) => {
+            const d = await get(`https://www.arbeitnow.com/api/job-board-api?page=${page + 1}`);
+            if (!d?.data?.length) return null;
+            // the board also lists on-site jobs in Germany
+            return d.data.filter((j) => j.remote).map((j) => ({ source: 'arbeitnow', sourceId: j.slug, title: j.title, company: j.company_name, url: j.url, applyUrl: j.url, locationRaw: j.location || '',
+                tags: j.tags || [], salary: null, employmentType: (j.job_types || []).join(', ') || null, postedAt: iso(j.created_at), description: text(j.description) }));
+        }, { maxPages: 5, maxRows: maxPerSource });
     },
 
     async workingnomads() {
@@ -125,10 +158,10 @@ export const SOURCES = {
         const s = await get('https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=10');
         const story = (s.hits || []).find((h) => /who is hiring/i.test(h.title || ''));
         if (!story) return [];
-        const out = [];
-        for (let page = 0; page < 10 && out.length < maxPerSource; page++) {
+        return paginate(async (page) => {
             const c = await get(`https://hn.algolia.com/api/v1/search_by_date?tags=comment,story_${story.objectID}&hitsPerPage=200&page=${page}`);
-            if (!c?.hits?.length) break;
+            if (!c?.hits?.length) return null;
+            const out = [];
             for (const h of c.hits) {
                 if (String(h.parent_id) !== String(story.objectID) || !h.comment_text) continue;
                 const body = text(h.comment_text); const head = body.split('\n')[0];
@@ -144,7 +177,7 @@ export const SOURCES = {
                     url: `https://news.ycombinator.com/item?id=${h.objectID}`, applyUrl: link, contactEmail: email, locationRaw: loc, tags: ['hn-who-is-hiring'], salary: (head.match(/[$€£]\s?\d[\d,.]*\s?k?(\s?[-–]\s?[$€£]?\s?\d[\d,.]*\s?k?)?/i) || [])[0] || null,
                     employmentType: /contract/i.test(head) ? 'contract' : null, postedAt: iso(h.created_at), description: body });
             }
-        }
-        return out;
+            return out;
+        }, { maxPages: 10, maxRows: maxPerSource });
     },
 };
