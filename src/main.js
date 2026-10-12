@@ -1,6 +1,7 @@
 import { Actor, log } from 'apify';
 import { SOURCES } from './sources.js';
 import { classify, cleanTitle, minYears, resolveCountry } from './eligibility.js';
+import { keywordMatcher, matchesAny } from './filters.js';
 
 const ORDER = { country: 0, region: 1, worldwide: 2, unclear: 3, restricted: 4 };
 const key = (j) => `${(j.company || '').toLowerCase().replace(/\W|inc$|llc$|ltd$|gmbh$/g, '')}|${(j.title || '').toLowerCase().replace(/\(.*?\)|\W/g, '')}`;
@@ -17,8 +18,9 @@ try {
 
     const cand = resolveCountry(candidateCountry);
     if (!cand.regions.length) log.warning(`"${candidateCountry}" is not in the built-in country list: only exact country-name matches and worldwide jobs can be recognised.`);
-    const kws = keywords.map((k) => k.toLowerCase().trim()).filter(Boolean);
-    const excl = excludeKeywords.map((k) => k.toLowerCase().trim()).filter(Boolean);
+    // Matchers are built once per run, not once per job.
+    const kws = keywords.filter((k) => String(k || '').trim()).map(keywordMatcher);
+    const excl = excludeKeywords.filter((k) => String(k || '').trim()).map(keywordMatcher);
     const since = Date.now() - postedWithinDays * 86_400_000;
 
     // 1. fetch every source in parallel; one broken feed never fails the run
@@ -43,8 +45,8 @@ try {
         if (j.postedAt && new Date(j.postedAt).getTime() < since) { dropped.old++; continue; }
         const title = j.title.toLowerCase();
         const hay = titleMustMatch ? title : `${title} ${(j.tags || []).join(' ').toLowerCase()} ${(j.description || '').toLowerCase()}`;
-        if (kws.length && !kws.some((k) => hay.includes(k))) { dropped.keyword++; continue; }
-        if (excl.some((k) => new RegExp(`(^|[^a-z])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(title))) { dropped.excluded++; continue; }
+        if (kws.length && !matchesAny(hay, kws)) { dropped.keyword++; continue; }
+        if (matchesAny(title, excl)) { dropped.excluded++; continue; }
         const yrs = minYears(j.title) ?? minYears(j.description); // "... | 8+ Years Exp" in the title is the headline ask
         if (maxYearsRequired != null && yrs != null && yrs > maxYearsRequired) { dropped.years++; continue; }
 
