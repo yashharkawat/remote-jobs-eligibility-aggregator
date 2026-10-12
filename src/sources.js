@@ -4,19 +4,57 @@
 
 const UA = 'remote-jobs-eligibility-aggregator/0.1 (+https://apify.com)';
 
-async function get(url, as = 'json') {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+const MAX_RETRY_WAIT_MS = 20_000;
+
+/** Milliseconds a 429/503 asks us to wait ("Retry-After: 5" or an HTTP date), capped; null when the header is absent or unreadable. */
+export function retryAfterMs(header, now = Date.now()) {
+    if (!header) return null;
+    const secs = Number(header);
+    const ms = Number.isFinite(secs) ? secs * 1000 : new Date(header).getTime() - now;
+    return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, MAX_RETRY_WAIT_MS) : null;
+}
+
+export async function get(url, as = 'json', { retries = 3, backoffMs = 1500 } = {}) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        let wait = backoffMs * attempt;
         try {
             const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: as === 'json' ? 'application/json' : '*/*' }, signal: AbortSignal.timeout(30_000) });
-            if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
+            if (res.status === 429 || res.status >= 500) {
+                // A feed that says when to come back gets that wait, not our fixed backoff.
+                wait = retryAfterMs(res.headers.get('retry-after')) ?? wait;
+                throw new Error(`HTTP ${res.status}`);
+            }
             if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { fatal: true });
             return as === 'json' ? await res.json() : await res.text();
         } catch (err) {
-            if (err.fatal || attempt === 3) throw err;
-            await new Promise((r) => setTimeout(r, 1500 * attempt));
+            if (err.fatal || attempt === retries) throw err;
+            await new Promise((r) => setTimeout(r, wait));
         }
     }
     return null;
+}
+
+/**
+ * Walks a paginated feed. `fetchPage(i)` returns that page's rows, or a falsy/empty value when the feed has ended.
+ * If a later page fails after its retries, the rows already collected are returned and the failure is recorded on
+ * the array as `partialError`, so one bad page no longer throws away the 300 jobs fetched before it. A failure on
+ * the first page still throws: an empty result must not look like a quiet day on the board.
+ */
+export async function paginate(fetchPage, { maxPages, maxRows = Infinity }) {
+    const out = [];
+    for (let i = 0; i < maxPages && out.length < maxRows; i++) {
+        let rows;
+        try {
+            rows = await fetchPage(i);
+        } catch (err) {
+            if (i === 0) throw err;
+            out.partialError = `page ${i + 1}: ${err.message}`;
+            break;
+        }
+        if (!rows?.length) break;
+        out.push(...rows);
+    }
+    return out;
 }
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'", '#x27': "'", '#x2F': '/', rsquo: "'", lsquo: "'", rdquo: '"', ldquo: '"', ndash: '-', mdash: '-', hellip: '...' };
@@ -54,18 +92,13 @@ export function hnTitle(parts, body) {
 
 export const SOURCES = {
     async himalayas({ maxPerSource }) {
-        const out = [];
-        for (let offset = 0; offset < maxPerSource; offset += 20) {
-            const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${offset}`);
-            if (!d?.jobs?.length) break;
-            for (const j of d.jobs) {
-                out.push({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
-                    locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
-                    tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
-                    employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) });
-            }
-        }
-        return out;
+        return paginate(async (page) => {
+            const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${page * 20}`);
+            return (d?.jobs || []).map((j) => ({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
+                locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
+                tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
+                employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) }));
+        }, { maxPages: Math.ceil(maxPerSource / 20) });
     },
 
     async remoteok() {

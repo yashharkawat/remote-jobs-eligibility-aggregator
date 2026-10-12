@@ -26,7 +26,8 @@ try {
     const fetched = (await Promise.all(sources.filter((s) => SOURCES[s]).map(async (s) => {
         try {
             const rows = await SOURCES[s]({ maxPerSource: 400 });
-            stats[s] = { fetched: rows.length };
+            stats[s] = { fetched: rows.length, ...(rows.partialError ? { partial: rows.partialError } : {}) };
+            if (rows.partialError) log.warning(`${s}: stopped early at ${rows.partialError} - kept the ${rows.length} rows fetched before it`);
             return rows;
         } catch (err) {
             stats[s] = { fetched: 0, error: err.message };
