@@ -102,29 +102,37 @@ export function resolveCountry(input) {
 // Two-letter codes are ambiguous in prose ("in", "it", "de"), so only these count, and only in UPPER CASE.
 const SAFE_CODES = { US: 'United States', USA: 'United States', UK: 'United Kingdom', UAE: 'United Arab Emirates', NZ: 'New Zealand' };
 
+// Every pattern below is compiled once, when the module loads. Before, mentions() built about 250 RegExp objects on
+// every call, and classify() calls it up to four times per job.
+const wordRe = (w) => new RegExp(`(^|[^a-z])${esc(w)}([^a-z]|$)`);
+const anyRe = (words) => new RegExp(`(^|[^a-z])(?:${words.map(esc).join('|')})([^a-z]|$)`);
+
+const COUNTRY_RES = Object.entries(COUNTRIES).map(([name, c]) => [
+    name,
+    anyRe([norm(name), ...c.alias].filter((a) => a.length > 3 || a === 'usa' || a === 'uae')),
+]);
+const OTHER_COUNTRY_RES = OTHER_COUNTRIES.map((c) => [c.replace(/\b[a-z]/g, (x) => x.toUpperCase()), wordRe(c)]);
+const CITY_RES = Object.entries(CITIES).filter(([name]) => COUNTRIES[name]).map(([name, list]) => [name, anyRe(list)]);
+const OTHER_CITY_RES = Object.entries(OTHER_CITIES).map(([city, name]) => [name, wordRe(city)]);
+// Upper-case codes are matched against the original text, everything else against the normalised text.
+const SAFE_CODE_RES = Object.entries(SAFE_CODES).map(([code, name]) => [name, new RegExp(`(^|[^A-Za-z])${code}([^A-Za-z]|$)`)]);
+const REGION_RES = REGION_WORDS.map((r) => (r.length <= 3
+    ? { region: r, raw: true, re: new RegExp(`(^|[^A-Za-z])${r.toUpperCase()}([^A-Za-z]|$)`) }
+    : { region: r, raw: false, re: wordRe(r) }));
+const EUROPEAN_RE = /(^|[^a-z])european([^a-z]|$)/;
+
 function mentions(text) {
-    const t = norm(text);
+    const raw = text || '';
+    const t = norm(raw);
     const countries = new Set();
-    for (const [name, c] of Object.entries(COUNTRIES)) {
-        const words = [norm(name), ...c.alias].filter((a) => a.length > 3 || a === 'usa' || a === 'uae');
-        if (words.some((a) => new RegExp(`(^|[^a-z])${esc(a)}([^a-z]|$)`).test(t))) countries.add(name);
-    }
-    for (const c of OTHER_COUNTRIES) if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add(c.replace(/\b[a-z]/g, (x) => x.toUpperCase()));
-    for (const [name, list] of Object.entries(CITIES)) {
-        if (!COUNTRIES[name]) continue;
-        if (list.some((c) => new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t))) countries.add(name);
-    }
-    for (const [c, name] of Object.entries(OTHER_CITIES)) {
-        if (new RegExp(`(^|[^a-z])${esc(c)}([^a-z]|$)`).test(t)) countries.add(name);
-    }
-    for (const [code, name] of Object.entries(SAFE_CODES)) {
-        if (new RegExp(`(^|[^A-Za-z])${code}([^A-Za-z]|$)`).test(text)) countries.add(name);
-    }
-    const regions = REGION_WORDS.filter((r) => (r.length <= 3
-        ? new RegExp(`(^|[^A-Za-z])${r.toUpperCase()}([^A-Za-z]|$)`).test(text)
-        : new RegExp(`(^|[^a-z])${esc(r)}([^a-z]|$)`).test(t)));
+    for (const [name, re] of COUNTRY_RES) if (re.test(t)) countries.add(name);
+    for (const [name, re] of OTHER_COUNTRY_RES) if (re.test(t)) countries.add(name);
+    for (const [name, re] of CITY_RES) if (re.test(t)) countries.add(name);
+    for (const [name, re] of OTHER_CITY_RES) if (re.test(t)) countries.add(name);
+    for (const [name, re] of SAFE_CODE_RES) if (re.test(raw)) countries.add(name);
+    const regions = REGION_RES.filter(({ raw: useRaw, re }) => re.test(useRaw ? raw : t)).map(({ region }) => region);
     // "European time zones" / "European hours" name Europe without the word "Europe" (3 Oct: All Gravy came back "unclear").
-    if (/(^|[^a-z])european([^a-z]|$)/.test(t) && !regions.includes('europe') && !regions.includes('european union')) regions.push('europe');
+    if (EUROPEAN_RE.test(t) && !regions.includes('europe') && !regions.includes('european union')) regions.push('europe');
     return { countries: [...countries], regions };
 }
 
