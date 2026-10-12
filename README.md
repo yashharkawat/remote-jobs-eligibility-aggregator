@@ -170,6 +170,15 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 - Run it on Apify: https://apify.com/yash_harkawat/remote-jobs-eligibility-aggregator
 - Source code and issues: https://github.com/yashharkawat/remote-jobs-eligibility-aggregator
 
+## Development
+
+```bash
+npm test        # unit tests, no network and no install needed
+npm install && APIFY_LOCAL_STORAGE_DIR=./storage npm start   # one local run against the live feeds
+```
+
+Every pull request runs the tests on Node 20 and 22 (`.github/workflows/test.yml`).
+
 ## Changelog
 
 - **0.1.17 (12 Oct 2026)** - A job title that ends in "- NA" or "(NA)", such as "Senior Forward Deployed Engineer - NA", is now read as North America only, so it comes back `restricted` for candidates elsewhere. Before, it came back `unclear`.
