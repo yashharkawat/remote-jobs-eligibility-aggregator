@@ -125,3 +125,14 @@ test('a closing "- NA" in the title means North America (12 Oct: Camunda "... - 
     assert.equal(v({ title: 'DNA Analyst', locationRaw: 'Remote' }), 'unclear');
     assert.equal(v({ title: 'NA Sales Engineer', locationRaw: 'Remote' }), 'unclear');
 });
+
+test('US state codes with "residents" mean United States (13 Oct: StartupHakk "Remote (UT or ID residents only)" came back "unclear")', () => {
+    assert.equal(v({ title: 'AI Engineer Apprentice', locationRaw: 'Remote (UT or ID residents only)' }), 'restricted');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, TX/FL residents' }), 'restricted');
+    // a US candidate is not locked out by it
+    assert.equal(classify({ description: '', title: 'Engineer', locationRaw: 'Remote (UT or ID residents only)' }, resolveCountry('United States')).eligibility, 'country');
+    // codes that are also countries, lower case, or no "residents": no state read
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote (IN residents welcome)' }), 'unclear');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote or onsite' }), 'unclear');
+    assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, ID required' }), 'unclear');
+});

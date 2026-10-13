@@ -102,6 +102,10 @@ export function resolveCountry(input) {
 // Two-letter codes are ambiguous in prose ("in", "it", "de"), so only these count, and only in UPPER CASE.
 const SAFE_CODES = { US: 'United States', USA: 'United States', UK: 'United Kingdom', UAE: 'United Arab Emirates', NZ: 'New Zealand' };
 
+// US state codes only count next to "residents" ("Remote (UT or ID residents only)"); CA, IN and DE are left out because they are also Canada, India and Germany (13 Oct: StartupHakk came back "unclear").
+const US_STATE = '(?:AL|AK|AZ|AR|CO|CT|FL|GA|HI|ID|IL|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)';
+const US_STATE_RESIDENTS = new RegExp(`(^|[^A-Za-z])${US_STATE}(?:\\s*(?:,|/|&|or|and)\\s*${US_STATE})*\\s+[Rr]esidents?\\b`);
+
 function mentions(text) {
     const t = norm(text);
     const countries = new Set();
@@ -120,6 +124,7 @@ function mentions(text) {
     for (const [code, name] of Object.entries(SAFE_CODES)) {
         if (new RegExp(`(^|[^A-Za-z])${code}([^A-Za-z]|$)`).test(text)) countries.add(name);
     }
+    if (US_STATE_RESIDENTS.test(text || '')) countries.add('United States');
     const regions = REGION_WORDS.filter((r) => (r.length <= 3
         ? new RegExp(`(^|[^A-Za-z])${r.toUpperCase()}([^A-Za-z]|$)`).test(text)
         : new RegExp(`(^|[^a-z])${esc(r)}([^a-z]|$)`).test(t)));
