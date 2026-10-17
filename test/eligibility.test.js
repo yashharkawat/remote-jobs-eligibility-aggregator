@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, resolveCountry, cleanTitle, minYears } from '../src/eligibility.js';
-import { text, hnTitle } from '../src/sources.js';
+import { text, hnTitle, cleanCompany } from '../src/sources.js';
 
 const india = resolveCountry('India');
 const v = (job) => classify({ description: '', ...job }, india).eligibility;
@@ -135,4 +135,11 @@ test('US state codes with "residents" mean United States (13 Oct: StartupHakk "R
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote (IN residents welcome)' }), 'unclear');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote or onsite' }), 'unclear');
     assert.equal(v({ title: 'Engineer', locationRaw: 'Remote, ID required' }), 'unclear');
+});
+
+test('company names lose leading registry codes', () => {
+    assert.equal(cleanCompany('TAN: PAN: First American India Pvt Ltd'), 'First American India Pvt Ltd');
+    assert.equal(cleanCompany('Acme Inc'), 'Acme Inc');
+    assert.equal(cleanCompany('IBM'), 'IBM');
+    assert.equal(cleanCompany(null), '');
 });

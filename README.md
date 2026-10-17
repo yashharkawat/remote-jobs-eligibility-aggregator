@@ -172,6 +172,7 @@ the log and in `SUMMARY`. Found a wrong verdict? Open an issue with the job URL 
 
 ## Changelog
 
+- **0.1.19 (17 Oct 2026)** - Company names from Himalayas lose leading registry codes, so "TAN: PAN: First American India Pvt Ltd" now comes back as "First American India Pvt Ltd".
 - **0.1.18 (13 Oct 2026)** - A location such as "Remote (UT or ID residents only)" names US states, so the job is now read as United States only and comes back `restricted` for candidates elsewhere. Before, it came back `unclear`. CA, IN and DE are not read this way, because they also stand for Canada, India and Germany.
 - **0.1.17 (12 Oct 2026)** - A job title that ends in "- NA" or "(NA)", such as "Senior Forward Deployed Engineer - NA", is now read as North America only, so it comes back `restricted` for candidates elsewhere. Before, it came back `unclear`.
 - **0.1.16 (7 Oct 2026)** - A job whose location is only a city such as "Cairo Governorate", "Dubai" or "Nairobi" is now tied to that city's country, so it comes back `restricted` for candidates elsewhere. Before, it came back `unclear`.

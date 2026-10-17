@@ -39,6 +39,9 @@ const HN_LOC = /remote|onsite|on-site|hybrid|worldwide|anywhere|\b(US|USA|UK|EU|
 const HN_ROLE = /(?:\b[^.|,;:()\n]{0,40})?\b(engineers?|developers?|designers?|scientists?|architects?|devops|sre|analysts?|full[- ]?stack|back[- ]?end|front[- ]?end)\b[^.|,;:()\n]{0,25}/i;
 const HN_ROLE_LOOSE = /\b(swe|sde|devs?|leads?|programmers?|researchers?|cto|manager|founding|head of)\b/i;
 const HN_BODY_TITLE = /\b(?:(?:Senior|Staff|Lead|Principal|Junior|Founding|Full[- ]?Stack|Back[- ]?end|Front[- ]?end|Software|Data|ML|AI|DevOps|Platform|Product|Mobile|Web|Security|Python|Machine Learning)\s+){1,3}(?:Engineers?|Developers?|Designers?|Scientists?|Architects?|Analysts?)\b/;
+// Strip leading registry codes some boards put before the name ("TAN: PAN: First American India Pvt Ltd").
+export const cleanCompany = (name) => String(name || '').replace(/^(?:[A-Z]{2,5}:\s*)+/, '').trim();
+
 export function hnTitle(parts, body) {
     const rest = parts.slice(1).filter((p) => p.length < 120 && !/https?:/.test(p));
     const first = (parts[0] || '').replace(/\(?https?:\/\/[^\s)]*\)?/g, '').trim();
@@ -59,7 +62,7 @@ export const SOURCES = {
             const d = await get(`https://himalayas.app/jobs/api?limit=20&offset=${offset}`);
             if (!d?.jobs?.length) break;
             for (const j of d.jobs) {
-                out.push({ source: 'himalayas', sourceId: j.guid, title: j.title, company: j.companyName, url: j.guid, applyUrl: j.applicationLink,
+                out.push({ source: 'himalayas', sourceId: j.guid, title: j.title, company: cleanCompany(j.companyName), url: j.guid, applyUrl: j.applicationLink,
                     locationRaw: (j.locationRestrictions || []).join(', ') || 'Worldwide', locationRestrictions: j.locationRestrictions || [],
                     tags: [...(j.categories || []), ...(j.seniority || [])], salary: money(j.minSalary, j.maxSalary, j.currency, j.salaryPeriod),
                     employmentType: j.employmentType, postedAt: iso(j.pubDate), description: text(j.description) });
